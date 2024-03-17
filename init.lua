@@ -383,7 +383,7 @@ require("lazy").setup({
   -- after the plugin has been loaded:
   --  config = function() ... end
 
-  { -- Useful plugin to show you pending keybinds.
+  {                     -- Useful plugin to show you pending keybinds.
     "folke/which-key.nvim",
     event = "VimEnter", -- Sets the loading event to 'VimEnter'
     config = function() -- This is the function that runs, AFTER loading
@@ -656,6 +656,7 @@ require("lazy").setup({
         -- clangd = {},
         gopls = {},
         pyright = {},
+        astro = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -764,7 +765,7 @@ require("lazy").setup({
     ft = { "go", 'gomod' },
     build = ':lua require("go.install").update_all_sync()' -- if you need to install/update all binaries
   },
-  { -- Autoformat
+  {                                                        -- Autoformat
     "stevearc/conform.nvim",
     opts = {
       notify_on_error = false,
@@ -891,27 +892,27 @@ require("lazy").setup({
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`
     "rose-pine/neovim",
     name = 'rose-pine',
-    lazy = false, -- make sure we load this during startup if it is your main colorscheme
+    lazy = false,    -- make sure we load this during startup if it is your main colorscheme
     priority = 1000, -- make sure to load this before all the other start plugins
     config = function()
       require("rose-pine").setup({
-        style = "night", -- The theme comes in three styles, `storm`, `moon`, a darker variant `night` and `day`
-        light_style = "day", -- The theme is used when the background is set to light
-        transparent = true, -- Enable this to disable setting the background color
+        style = "night",        -- The theme comes in three styles, `storm`, `moon`, a darker variant `night` and `day`
+        light_style = "day",    -- The theme is used when the background is set to light
+        transparent = true,     -- Enable this to disable setting the background color
         terminal_colors = true, -- Configure the colors used when opening a `:terminal` in [Neovim](https://github.com/neovim/neovim)
         styles = {
           comments = { italic = true },
           keywords = { italic = true },
           functions = {},
           variables = {},
-          sidebars = "dark", -- style for sidebars, see below
-          floats = "dark", -- style for floating windows
+          sidebars = "dark",              -- style for sidebars, see below
+          floats = "dark",                -- style for floating windows
         },
-        sidebars = { "qf", "help" }, -- Set a darker background on sidebar-like windows. For example: `["qf", "vista_kind", "terminal", "packer"]`
-        day_brightness = 0.3, -- Adjusts the brightness of the colors of the **Day** style. Number between 0 and 1, from dull to vibrant colors
+        sidebars = { "qf", "help" },      -- Set a darker background on sidebar-like windows. For example: `["qf", "vista_kind", "terminal", "packer"]`
+        day_brightness = 0.3,             -- Adjusts the brightness of the colors of the **Day** style. Number between 0 and 1, from dull to vibrant colors
         hide_inactive_statusline = false, -- Enabling this option, will hide inactive statuslines and replace them with a thin border instead. Should work with the standard **StatusLine** and **LuaLine**.
-        dim_inactive = false, -- dims inactive windows
-        lualine_bold = false, -- When `true`, section headers in the lualine theme will be bold
+        dim_inactive = false,             -- dims inactive windows
+        lualine_bold = false,             -- When `true`, section headers in the lualine theme will be bold
         ---@param colors ColorScheme
         on_colors = function(colors) end,
 
