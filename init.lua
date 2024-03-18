@@ -208,6 +208,16 @@ local persistbuffer = function(bufnr)
   vim.fn.setbufvar(bufnr, "bufpersist", 1)
 end
 
+local depersistbuffer = function(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  vim.fn.setbufvar(bufnr, "bufpersist", 0)
+end
+
+local pinbuffer = function(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  vim.fn.setbufvar(bufnr, "bufpin", 1)
+end
+
 vim.api.nvim_create_autocmd({ "BufRead" }, {
   group = id,
   pattern = { "*" },
@@ -222,7 +232,25 @@ vim.api.nvim_create_autocmd({ "BufRead" }, {
   end,
 })
 
-vim.keymap.set("n", "<Leader>b", function()
+vim.api.nvim_create_autocmd({ "BufWritePost" }, {
+  group = id,
+  pattern = { "*" },
+  callback = function()
+    depersistbuffer()
+  end,
+})
+
+vim.keymap.set("n", "<Leader>bp", function()
+  local curbufnr = vim.api.nvim_get_current_buf()
+  local pinned = vim.fn.getbufvar(curbufnr, "bufpin")
+  if pinned == 1 then
+    vim.fn.setbufvar(curbufnr, "bufpin", 0)
+  else
+    vim.fn.setbufvar(curbufnr, "bufpin", 1)
+  end
+end, { silent = true, desc = "Pin/UnPin Buffer" })
+
+vim.keymap.set("n", "<Leader>bc", function()
   local curbufnr = vim.api.nvim_get_current_buf()
   local buflist = vim.api.nvim_list_bufs()
   for _, bufnr in ipairs(buflist) do
@@ -231,6 +259,7 @@ vim.keymap.set("n", "<Leader>b", function()
     end
   end
 end, { silent = true, desc = "Close unused buffers" })
+
 -- Terminal Management
 --
 vim.keymap.set("n", "<leader>tt", ":FloatermToggle <Enter>", { desc = "Toggle Terminal" })
