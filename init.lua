@@ -589,6 +589,7 @@ require("lazy").setup({
       --    That is to say, every time a new file is opened that is associated with
       --    an lsp (for example, opening `main.rs` is associated with `rust_analyzer`) this
       --    function will be executed to configure the current buffer
+      vim.lsp.set_log_level("off")
 
       vim.api.nvim_create_autocmd("LspAttach", {
         group = vim.api.nvim_create_augroup("kickstart-lsp-attach", { clear = true }),
@@ -655,15 +656,19 @@ require("lazy").setup({
           -- When you move your cursor, the highlights will be cleared (the second autocommand).
           local client = vim.lsp.get_client_by_id(event.data.client_id)
           if client and client.server_capabilities.documentHighlightProvider then
-            vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
-              buffer = event.buf,
-              callback = vim.lsp.buf.document_highlight,
-            })
+            local function create_hightlight_auto_commands()
+              vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
+                buffer = event.buf,
+                callback = vim.lsp.buf.document_highlight,
+              })
 
-            vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
-              buffer = event.buf,
-              callback = vim.lsp.buf.clear_references,
-            })
+              vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
+                buffer = event.buf,
+                callback = vim.lsp.buf.clear_references,
+              })
+            end
+
+            pcall(create_hightlight_auto_commands)
           end
         end,
       })
