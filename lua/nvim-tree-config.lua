@@ -1,98 +1,100 @@
 local nvim_tree_config = {}
 
-local function tree_actions_menu(node)
-	-- Tree Actions
-	--
-	local tree_actions = {
-		{
-			name = "Create Node",
-			handler = require("nvim-tree.api").fs.create,
-		},
-		{
-			name = "Remove Node",
-			handler = require("nvim-tree.api").fs.remove,
-		},
-		{
-			name = "Trash Node",
-			handler = require("nvim-tree.api").fs.trash,
-		},
-		{
-			name = "Rename Node",
-			handler = require("nvim-tree.api").fs.rename,
-		},
-		{
-			name = "Fully rename node",
-			handler = require("nvim-tree.api").fs.rename_sub,
-		},
-		{
-			name = "Copy",
-			handler = require("nvim-tree.api").fs.copy.node,
-		},
-	}
-	local entry_maker = function(menu_item)
-		return {
-			value = menu_item,
-			ordinal = menu_item.name,
-			display = menu_item.name,
-		}
+
+
+local function edit_or_open()
+	local api = require("nvim-tree.api")
+	local node = api.tree.get_node_under_cursor()
+
+	if node.nodes ~= nil then
+		-- expand or collapse folder
+		api.node.open.edit()
+	else
+		-- open file
+		api.node.open.edit()
+		-- Close the tree if file was opened
+		api.tree.close()
 	end
-	local finder = require("telescope.finders").new_table({
-		results = tree_actions,
-		entry_maker = entry_maker,
-	})
+end
 
-	local sorter = require("telescope.sorters").get_generic_fuzzy_sorter()
+-- open as vsplit on current node
+local function vsplit_preview()
+	local api = require("nvim-tree.api")
+	local node = api.tree.get_node_under_cursor()
 
-	local default_options = {
-		finder = finder,
-		sorter = sorter,
-		attach_mappings = function(prompt_buffer_number)
-			local actions = require("telescope.actions")
+	if node.nodes ~= nil then
+		-- expand or collapse folder
+		api.node.open.edit()
+	else
+		-- open file as vsplit
+		api.node.open.vertical()
+	end
 
-			actions.select_default:replace(function()
-				local state = require("telescope.actions.state")
-				local selection = state.get_selected_entry()
-				-- Close the picker
-				actions.close(prompt_buffer_number)
-				-- Call the handler
-				selection.value.handler(node)
-			end)
-
-			-- The following actions are disabled in this example
-			-- You may want to map them too depending on your needs though
-			actions.add_selection:replace(function() end)
-			actions.remove_selection:replace(function() end)
-			actions.toggle_selection:replace(function() end)
-			actions.select_all:replace(function() end)
-			actions.drop_all:replace(function() end)
-			actions.toggle_selection:replace(function() end)
-			return true
-		end,
-	}
-
-	-- Opening the menu
-	require("telescope.pickers").new({ title = "Tree Menu" }, default_options):find()
+	-- Finally refocus on tree if it was lost
+	api.tree.focus()
 end
 
 nvim_tree_config.config = function()
-	local api = require("nvim-tree.api")
 	-- default mappings
+	local api = require("nvim-tree.api")
 	vim.keymap.set("n", "<leader>ff", api.tree.toggle, { desc = "Toggle File Tree" })
 	require("nvim-tree").setup({
 		on_attach = function(buffer)
-			vim.keymap.set(
-				"n",
-				"<leader>fn",
-				tree_actions_menu,
-				{ buffer = buffer, noremap = true, silent = true, desc = "Tree Actions" }
-			)
+			local opts = function(desc)
+				return { buffer = buffer, desc = desc, silent = true, noremap = true }
+			end
+			vim.keymap.set("n", "l", edit_or_open, opts("Edit Or Open"))
+			vim.keymap.set("n", "L", vsplit_preview, opts("Vsplit Preview"))
+			vim.keymap.set("n", "h", api.tree.close, opts("Close"))
+			vim.keymap.set("n", "H", api.tree.collapse_all, opts("Collapse All"))
+			vim.keymap.set("n", "n", api.fs.create, opts("Create Node"))
+			vim.keymap.set("n", "r", api.fs.rename, opts("Rename Node"))
 			local keymap = require("nvim-tree.keymap")
 			keymap.default_on_attach(buffer)
 		end,
 		view = {
-			width = 60
+			width = {
+				min = 60,
+				padding = 0
+			}
+		},
+		renderer = {
+			root_folder_label = false,
+			highlight_git = "icon",
+			highlight_diagnostics = "icon",
+			icons = {
+				git_placement = "after",
+			}
+		},
+		filters = {
+			custom = { ".git"},
+			dotfiles = false,
+			exclude = { ".gitignore" }
 		}
 	})
 end
+
+local function open_nvim_tree(data)
+	-- buffer is a real file on the disk
+	local real_file = vim.fn.filereadable(data.file) == 1
+
+	-- buffer is a [No Name]
+	local no_name = data.file == '' and vim.bo[data.buf].buftype == ''
+
+	-- only files please
+	if not real_file and not no_name then
+		return
+	end
+
+	-- open the tree but dont focus it
+	require('nvim-tree.api').tree.toggle({ focus = false })
+	vim.api.nvim_exec_autocmds('BufWinEnter', { buffer = require('nvim-tree.view').get_bufnr() })
+end
+
+vim.api.nvim_create_autocmd({ 'VimEnter' }, { callback = open_nvim_tree })
+vim.api.nvim_create_autocmd({ 'VimLeavePre' }, { callback = function()
+	require('nvim-tree.api').tree.close()
+end })
+
 
 return nvim_tree_config.config
