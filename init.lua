@@ -347,7 +347,83 @@ require("lazy").setup({
       })
     end
   },
+  { 'romgrk/barbar.nvim',
+    dependencies = {
+      'lewis6991/gitsigns.nvim', -- OPTIONAL: for git status
+      'nvim-tree/nvim-web-devicons', -- OPTIONAL: for file icons
+    },
+    init = function()
+      vim.g.barbar_auto_setup = false
+      vim.opt.fillchars = {
+        vert = "▏",
+        horiz = "─",
+        horizup = "─",
+        horizdown = "─",
+        verthoriz = "─",
+        fold = " ",
+        eob = " ", -- suppress ~ at EndOfBuffer
+        diff = "╱", -- alternatives = ⣿ ░ ─
+        msgsep = "‾",
+        foldopen = "▾",
+        foldsep = "▏",
+        foldclose = "▸",
+      }
+      local map = vim.api.nvim_set_keymap
+      local opts = { noremap = true, silent = true }
 
+      map('n', '<leader>bd', '<cmd>BufferClose<CR>', opts)
+      map('n', '<leader>p', '<cmd>BufferPick<CR>', opts);
+      map('n', '<leader>bci', '<cmd>BufferCloseAllButCurrent<CR>', opts)
+
+      -- Ordering/sorting tabs
+
+      map('n', '<leader>bsd', '<cmd>BufferOrderByDirectory<CR>', opts)
+      map('n', '<leader>bsl', '<cmd>BufferOrderByLanguage<CR>', opts)
+      map('n', '<leader>bsw', '<cmd>BufferOrderByWindowNumber<CR>', opts)
+      map('n', '<leader>bsb', '<cmd>BufferOrderByBufferNumber<CR>', opts)
+
+      -- Navigate through tabs
+
+      map('n', '<leader>b.', '<cmd>BufferPrevious<CR>', opts)
+      map('n', '<leader>b,', '<cmd>BufferNext<CR>', opts)
+
+      map('n', '<leader>b1', '<cmd>BufferGoto 1<CR>', opts)
+      map('n', '<leader>b2', '<cmd>BufferGoto 2<CR>', opts)
+      map('n', '<leader>b3', '<cmd>BufferGoto 3<CR>', opts)
+      map('n', '<leader>b4', '<cmd>BufferGoto 4<CR>', opts)
+      map('n', '<leader>b5', '<cmd>BufferGoto 5<CR>', opts)
+      map('n', '<leader>b6', '<cmd>BufferGoto 6<CR>', opts)
+      map('n', '<leader>b7', '<cmd>BufferGoto 7<CR>', opts)
+      map('n', '<leader>b8', '<cmd>BufferGoto 8<CR>', opts)
+      map('n', '<leader>b9', '<cmd>BufferGoto 9<CR>', opts)
+      map('n', '<leader>b10', '<cmd>BufferGoto 0<CR>', opts)
+
+
+    end,
+    opts = {
+      modified = { button = '●' },
+      -- lazy.nvim will automatically call setup for you. put your options here, anything missing will use the default:
+      -- animation = true,
+      -- insert_at_start = true,
+      -- …etc.
+      sidebar_filetypes = {
+        NvimTree = { event = 'BufWinLeave', text = 'Files' }
+      },
+      icons = {
+        seperator_at_end = false,
+        separator = {
+          left = "▏",
+          right = "▕"
+        },
+        inactive = {
+          separator = {
+            left = "",
+            right = "",
+          },
+        },
+      }
+    },
+  },
   {
     "nvim-tree/nvim-tree.lua",
     version = "*",
