@@ -343,7 +343,8 @@ require("lazy").setup({
       require('scrollbar').setup({
         handlers = {
           gitsigns = true
-        }
+        },
+        excluded_buftypes = { 'nofile' }
       })
     end
   },
