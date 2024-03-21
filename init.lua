@@ -797,7 +797,7 @@ require("lazy").setup({
     ft = { "go", 'gomod' },
     build = ':lua require("go.install").update_all_sync()' -- if you need to install/update all binaries
   },
-  {                                                        -- Autoformat
+  { -- Autoformat
     "stevearc/conform.nvim",
     opts = {
       notify_on_error = false,
@@ -924,45 +924,46 @@ require("lazy").setup({
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`
     "rose-pine/neovim",
     name = 'rose-pine',
-    lazy = false,    -- make sure we load this during startup if it is your main colorscheme
+    lazy = false, -- make sure we load this during startup if it is your main colorscheme
     priority = 1000, -- make sure to load this before all the other start plugins
     config = function()
       require("rose-pine").setup({
-        style = "night",        -- The theme comes in three styles, `storm`, `moon`, a darker variant `night` and `day`
-        light_style = "day",    -- The theme is used when the background is set to light
-        transparent = true,     -- Enable this to disable setting the background color
-        terminal_colors = true, -- Configure the colors used when opening a `:terminal` in [Neovim](https://github.com/neovim/neovim)
-        styles = {
-          comments = { italic = true },
-          keywords = { italic = true },
-          functions = {},
-          variables = {},
-          sidebars = "dark",              -- style for sidebars, see below
-          floats = "dark",                -- style for floating windows
+        dim_inactive_windows = true,
+        styles               = {
+          italic = false,
+          bold = false,
         },
-        sidebars = { "qf", "help" },      -- Set a darker background on sidebar-like windows. For example: `["qf", "vista_kind", "terminal", "packer"]`
-        day_brightness = 0.3,             -- Adjusts the brightness of the colors of the **Day** style. Number between 0 and 1, from dull to vibrant colors
-        hide_inactive_statusline = false, -- Enabling this option, will hide inactive statuslines and replace them with a thin border instead. Should work with the standard **StatusLine** and **LuaLine**.
-        dim_inactive = false,             -- dims inactive windows
-        lualine_bold = false,             -- When `true`, section headers in the lualine theme will be bold
-        ---@param colors ColorScheme
-        on_colors = function(colors) end,
+        highlight_groups     = {
+          BufferOffset = { bg = "#1E1F22" },
+          BufferTabpageFill = { bg = "#1E1F22" },
+          CursorLine = { bg = "overlay" },
+          BufferCurrent = { fg = "text", bg = "overlay" },
+          BufferCurrentIndex = { fg = "text", bg = "overlay" },
+          BufferCurrentMod = { fg = "foam", bg = "overlay" },
+          BufferCurrentSign = { fg = "rose", bg = "overlay" },
+          BufferCurrentTarget = { fg = "gold", bg = "overlay" },
+          BufferInactive = { fg = "subtle" },
+          BufferInactiveIndex = { fg = "subtle" },
+          BufferInactiveMod = { fg = "foam" },
+          BufferInactiveSign = { fg = "none" },
+          BufferInactiveTarget = { fg = "gold" },
+          BufferVisible = { fg = "subtle" },
+          BufferVisibleIndex = { fg = "subtle" },
+          BufferVisibleMod = { fg = "foam" },
+          BufferVisibleSign = { fg = "muted" },
+          BufferVisibleTarget = { fg = "gold" },
+          NormalNC = { bg = "#1a1b1f" },
+          Normal = { bg = "#1E1F22" },
 
-        --- You can override specific highlights to use other groups or a hex color
-        --- function will be called with a Highlights and ColorScheme table
-        ---@param highlights Highlights
-        ---@param colors ColorScheme
-        on_highlights = function(highlights, colors) end,
+          BufferTabpages = { fg = "love" },
+          BufferTabpagesSep = { fg = "love" },
+          VertSplit = { fg = "gold" },
+        },
       })
       -- Load the colorscheme here
       vim.cmd.colorscheme("rose-pine")
-
-      -- You can configure highlights by doing something like
-      vim.cmd.hi("Comment gui=none")
     end,
     opts = {
-      style = "dark",
-      transparent = true,
     },
   },
 
@@ -973,7 +974,6 @@ require("lazy").setup({
     dependencies = { "nvim-lua/plenary.nvim" },
     opts = { signs = false },
   },
-
   { -- Collection of various small independent plugins/modules
     "echasnovski/mini.nvim",
     config = function()
