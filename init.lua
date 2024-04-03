@@ -712,7 +712,7 @@ require("lazy").setup({
         cucumber_language_server = {
           settings = {
             features = "**/*.feature",
-            glue = { "**/steps/*.ts", "tests/**/*.ts" },
+            glue = { "**/steps/**/*.ts", "tests/**/*.ts", "**/support/**/*.ts" },
           },
         },
         eslint = {
@@ -900,8 +900,6 @@ require("lazy").setup({
           --  This will auto-import if your LSP supports it.
           --  This will expand snippets if the LSP sent a snippet.
           ["<C-y>"] = cmp.mapping.confirm({ select = true }),
-          ["<Tab>"] = cmp.mapping.confirm({ select = true }),
-
           -- Manually trigger a completion from nvim-cmp.
           --  Generally you don't need this, because nvim-cmp will display
           --  completions whenever it has completion options available.
