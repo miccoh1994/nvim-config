@@ -58,6 +58,9 @@ nvim_tree_config.config = function()
 				padding = 0
 			}
 		},
+		update_focused_file = {
+			enable = true,
+		},
 		renderer = {
 			root_folder_label = false,
 			highlight_git = "icon",
@@ -67,7 +70,7 @@ nvim_tree_config.config = function()
 			}
 		},
 		filters = {
-			custom = { ".git"},
+			custom = { ".git" },
 			dotfiles = false,
 			exclude = { ".gitignore" }
 		}
