@@ -699,6 +699,13 @@ require("lazy").setup({
         -- clangd = {},
         gopls = {},
         pyright = {},
+        yamlls = {
+          settings = {
+            yaml = {
+              ["https://bitbucket.org/atlassianlabs/atlascode/raw/1c2709b4f9fff97abd6dff86cf3194d28a2a5ecd/resources/schemas/pipelines-schema.json"] = "./bitbucket-pipelines.yml"
+            }
+          }
+        },
         astro = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
