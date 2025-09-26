@@ -1,4 +1,25 @@
 local MiniSessionConfig = {}
+local function branch_name()
+	local branch = vim.fn.system("git branch --show-current 2> /dev/null | tr -d '\n'")
+	if branch ~= "" then
+		return branch
+	else
+		return ""
+	end
+end
+
+local function branch_name_rev_parse()
+	-- Run the git command to get the current branch name
+	local branch = vim.fn.systemlist("git rev-parse --abbrev-ref HEAD")[1]
+
+	-- Check for errors (e.g., not a git repo)
+	if branch == nil or branch == '' or branch:match("^fatal") then
+		return ""
+	else
+		return branch
+	end
+end
+
 MiniSessionConfig.setup = function()
 	vim.opt.sessionoptions:append("globals")
 
@@ -9,7 +30,9 @@ MiniSessionConfig.setup = function()
 	local auto_write = true
 	if gitRoot ~= "" then
 		local without_git_in_path = vim.fn.fnamemodify(gitRoot, ":p:h:h")
-		sessiondir = without_git_in_path .. "/.idea" .. "/nvim-sessions"
+		local branch = branch_name_rev_parse()
+		-- if in git repo make session based on branch name
+		sessiondir = without_git_in_path .. "/.idea" .. "/nvim-sessions" .. "/" .. branch
 		-- make a session directory if it doesn't exist
 		vim.fn.mkdir(sessiondir, "p")
 	else -- If we are not in a git repo, we disable auto read and write and global session options
