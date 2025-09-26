@@ -37,7 +37,7 @@ end
 nvim_tree_config.config = function()
 	-- default mappings
 	local api = require("nvim-tree.api")
-	vim.keymap.set("n", "<leader>ff", api.tree.toggle, { desc = "Toggle File Tree" })
+	vim.keymap.set("n", "<leader>e", api.tree.toggle, { desc = "Toggle File Tree" })
 	require("nvim-tree").setup({
 		on_attach = function(buffer)
 			local opts = function(desc)
@@ -47,30 +47,46 @@ nvim_tree_config.config = function()
 			vim.keymap.set("n", "L", vsplit_preview, opts("Vsplit Preview"))
 			vim.keymap.set("n", "h", api.tree.close, opts("Close"))
 			vim.keymap.set("n", "H", api.tree.collapse_all, opts("Collapse All"))
-			vim.keymap.set("n", "n", api.fs.create, opts("Create Node"))
+			vim.keymap.set("n", "a", api.fs.create, opts("Create Node"))
 			vim.keymap.set("n", "r", api.fs.rename, opts("Rename Node"))
 			local keymap = require("nvim-tree.keymap")
 			keymap.default_on_attach(buffer)
 		end,
 		view = {
 			width = {
-				min = 60,
+				min = 30,
 				padding = 0
-			}
+			},
+			cursorline = true,
+			signcolumn = "no",
+			number = true,
+			relativenumber = true,
 		},
 		update_focused_file = {
 			enable = true,
 		},
+
+		hijack_cursor = true,
 		renderer = {
+			indent_width = 0,
 			root_folder_label = false,
 			highlight_git = "icon",
 			highlight_diagnostics = "icon",
 			icons = {
 				git_placement = "after",
+				glyphs = {
+					folder = {
+						arrow_closed = "",
+						arrow_open = "",
+					}
+				},
+				padding = {
+					folder_arrow = "",
+				}
 			}
 		},
 		filters = {
-			custom = { ".git" },
+			custom = { ".git", "node_modules" },
 			dotfiles = false,
 			exclude = { ".gitignore" }
 		}
@@ -95,9 +111,11 @@ local function open_nvim_tree(data)
 end
 
 vim.api.nvim_create_autocmd({ 'VimEnter' }, { callback = open_nvim_tree })
-vim.api.nvim_create_autocmd({ 'VimLeavePre' }, { callback = function()
-	require('nvim-tree.api').tree.close()
-end })
+vim.api.nvim_create_autocmd({ 'VimLeavePre' }, {
+	callback = function()
+		require('nvim-tree.api').tree.close()
+	end
+})
 
 
 return nvim_tree_config.config
