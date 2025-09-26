@@ -232,11 +232,21 @@ vim.opt.rtp:prepend(lazypath)
 --    :Lazy update
 --
 -- NOTE: Here is where you install your plugins.
+
+
+
 require("lazy").setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   "tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
+  {
+    "ggandor/leap.nvim",
+    config = function()
+      require('leap').create_default_mappings()
+    end
+  },
   "mg979/vim-visual-multi",
   "github/copilot.vim",
+  "f-person/git-blame.nvim",
   {
     "brenoprata10/nvim-highlight-colors",
     opts = {
@@ -287,9 +297,10 @@ require("lazy").setup({
       })
     end
   },
-  { 'romgrk/barbar.nvim',
+  {
+    'romgrk/barbar.nvim',
     dependencies = {
-      'lewis6991/gitsigns.nvim', -- OPTIONAL: for git status
+      'lewis6991/gitsigns.nvim',     -- OPTIONAL: for git status
       'nvim-tree/nvim-web-devicons', -- OPTIONAL: for file icons
     },
     init = function()
@@ -337,19 +348,27 @@ require("lazy").setup({
       map('n', '<leader>b8', '<cmd>BufferGoto 8<CR>', opts)
       map('n', '<leader>b9', '<cmd>BufferGoto 9<CR>', opts)
       map('n', '<leader>b10', '<cmd>BufferGoto 0<CR>', opts)
-
-
+      map('n', '<leader>]', '<cmd>BufferNext<CR>', opts)
+      map('n', '<leader>[', '<cmd>BufferPrevious<CR>', opts)
+      map('n', '<leader>P', '<cmd>BufferPin<CR>', opts)
+      map('n', '<backspace>', '<C-^>', opts)
     end,
     opts = {
+      animation = false,
+      highlight_alternate = true,
+      hide = { extensions = true },
+      insert_at_start = true,
+      minimum_padding = 0,
       modified = { button = '●' },
       -- lazy.nvim will automatically call setup for you. put your options here, anything missing will use the default:
       -- animation = true,
       -- insert_at_start = true,
       -- …etc.
       sidebar_filetypes = {
-        NvimTree = { event = 'BufWinLeave', text = 'Files' }
+        NvimTree = { event = 'BufWinLeave', text = '󰆌' },
       },
       icons = {
+        pinned = { filename = true, button = " " },
         seperator_at_end = false,
         separator = {
           left = "▏",
@@ -420,11 +439,13 @@ require("lazy").setup({
   -- after the plugin has been loaded:
   --  config = function() ... end
 
-  { -- Useful plugin to show you pending keybinds.
+  {                     -- Useful plugin to show you pending keybinds.
     "folke/which-key.nvim",
     event = "VimEnter", -- Sets the loading event to 'VimEnter'
     config = function() -- This is the function that runs, AFTER loading
-      require("which-key").setup()
+      require("which-key").setup({
+        notify = false,
+      })
 
       -- Document existing key chains
       require("which-key").register({
@@ -502,6 +523,10 @@ require("lazy").setup({
         --   },
         -- },
         -- pickers = {}
+        defaults = {
+          max_lines = 50,
+          max_results = 50, -- Limit the number of results returned by Telescope
+        },
         extensions = {
           ["ui-select"] = {
             require("telescope.themes").get_dropdown(),
@@ -528,8 +553,8 @@ require("lazy").setup({
       vim.keymap.set("n", "<leader>sr", builtin.resume, { desc = "[S]earch [R]esume" })
       vim.keymap.set("n", "<leader>s.", builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set("n", "<leader><leader>", function()
-        pickers.prettyBuffersPicker()
-      end,
+          pickers.prettyBuffersPicker()
+        end,
         { desc = "[ ] Find existing buffers" })
       vim.keymap.set("n", "<leader>t", builtin.help_tags, { desc = "Terminal" })
 
@@ -558,6 +583,7 @@ require("lazy").setup({
     end,
   },
 
+
   { -- LSP Configuration & Plugins
     "neovim/nvim-lspconfig",
     dependencies = {
@@ -566,6 +592,7 @@ require("lazy").setup({
       "williamboman/mason-lspconfig.nvim",
       "WhoIsSethDaniel/mason-tool-installer.nvim",
 
+      "tjdevries/vlog.nvim",
       -- Useful status updates for LSP.
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
       { "j-hui/fidget.nvim", opts = {} },
@@ -700,44 +727,84 @@ require("lazy").setup({
       --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
+      --
+      local nvim_lsp = require("lspconfig")
+      local function deepest_root_pattern(patterns1, patterns2)
+        -- Create two root_pattern functions
+        local find_root1 = nvim_lsp.util.root_pattern(unpack(patterns1))
+        local find_root2 = nvim_lsp.util.root_pattern(unpack(patterns2))
+
+        return function(startpath)
+          local path1 = find_root1(startpath)
+          local path2 = find_root2(startpath)
+
+          if path1 and path2 then
+            -- Count the number of slashes to determine the path length
+            local path1_length = select(2, path1:gsub("/", ""))
+            local path2_length = select(2, path2:gsub("/", ""))
+
+            if path1_length > path2_length then
+              return path1
+            end
+          elseif path1 then
+            return path1
+          end
+
+          return nil
+        end
+      end
+
+
+      local function ts_organize_imports()
+        vim.lsp.buf.execute_command({ command = "_typescript.organizeImports", arguments = { vim.api.nvim_buf_get_name(0) } })
+        -- write buffer to apply the fix
+        vim.api.nvim_command("w")
+      end
+
+      vim.keymap.set("n", "<leader>oi", ts_organize_imports, { desc = "Organize [I]mports" })
+
       local servers = {
-        -- clangd = {},
-        gopls = {},
-        pyright = {},
+        jsonls = {
+          filetypes = { "json", "jsonc", "geojson" },
+        },
         yamlls = {
           settings = {
             yaml = {
-              ["https://bitbucket.org/atlassianlabs/atlascode/raw/1c2709b4f9fff97abd6dff86cf3194d28a2a5ecd/resources/schemas/pipelines-schema.json"] = "./bitbucket-pipelines.yml"
+              ["https://bitbucket.org/atlassianlabs/atlascode/raw/1c2709b4f9fff97abd6dff86cf3194d28a2a5ecd/resources/schemas/pipelines-schema.json"] =
+              "./bitbucket-pipelines.yml"
             }
           }
         },
-        astro = {},
-        -- rust_analyzer = {},
-        -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-        --
-        -- Some languages (like typescript) have entire language plugins that can be useful:
-        --    https://github.com/pmizio/typescript-tools.nvim
-        --
-        -- But for many setups, the LSP (`tsserver`) will work just fine
-        -- tsserver = {},
-        --
+        -- tsserver = {
+        --   -- root_dir = nvim_lsp.util.root_pattern("package.json"),
+        --   root_dir = deepest_root_pattern({ "package.json", "tsconfig.json" },
+        --     { "deno.json", "deno.jsonc", "import_map.json" }),
+        --   single_file_support = false,
+        -- },
+        denols = {
+          root_dir = deepest_root_pattern({ "deno.json", "deno.jsonc", "import_map.json" },
+            { "package.json", "tsconfig.json" }),
+          -- root_dir = nvim_lsp.util.root_pattern("deno.json", "deno.jsonc"),
+          settings = {
+            lint = true,
+            unstable = true,
+            suggest = {
+              imports = {
+                hosts = {
+                  ["https://deno.land"] = true,
+                  ["https://cdn.nest.land"] = true,
+                  ["https://crux.land"] = true,
+                },
+              }
+            }
+          }
+        },
         cucumber_language_server = {
           settings = {
             features = "**/*.feature",
             glue = { "**/steps/**/*.ts", "tests/**/*.ts", "**/support/**/*.ts" },
           },
         },
-        eslint = {
-          on_attach = function(args)
-            vim.api.nvim_create_autocmd("BufWritePre", {
-              pattern = { "*.tsx", "*.ts", "*.jsx", "*.js" },
-              command = "silent! EslintFixAll",
-              group = vim.api.nvim_create_augroup("MyAutocmdsJavaScripFormatting", {}),
-            })
-            require("conform").format({ bufnr = args.bufnr })
-          end,
-        },
-
         lua_ls = {
           -- cmd = {...},
           -- filetypes { ...},
@@ -790,7 +857,8 @@ require("lazy").setup({
       vim.list_extend(ensure_installed, {
         "stylua", -- Used to format lua code
       })
-      require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
+      -- prefer to manually install the tools you need when you need them
+      -- require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
       require("mason-lspconfig").setup({
         handlers = {
@@ -827,7 +895,7 @@ require("lazy").setup({
     ft = { "go", 'gomod' },
     build = ':lua require("go.install").update_all_sync()' -- if you need to install/update all binaries
   },
-  { -- Autoformat
+  {                                                        -- Autoformat
     "stevearc/conform.nvim",
     opts = {
       notify_on_error = false,
@@ -838,8 +906,8 @@ require("lazy").setup({
         --
         -- You can use a sub-list to tell conform to run *until* a formatter
         -- is found.
-        javascript = { { "prettierd", "prettier" } },
-        typescript = { { "prettierd", "prettier" } },
+        -- javascript = { { "prettierd", "prettier" }, { "eslint", "eslint_d" } },
+        -- typescript = { { "prettierd", "prettier" }, { "eslint", "eslint_d" } }
       },
     },
   },
@@ -952,7 +1020,7 @@ require("lazy").setup({
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`
     "rose-pine/neovim",
     name = 'rose-pine',
-    lazy = false, -- make sure we load this during startup if it is your main colorscheme
+    lazy = false,    -- make sure we load this during startup if it is your main colorscheme
     priority = 1000, -- make sure to load this before all the other start plugins
     config = function()
       require("rose-pine").setup({
@@ -962,7 +1030,7 @@ require("lazy").setup({
           bold = false,
         },
         highlight_groups     = {
-          BufferOffset = { bg = "#1E1F22" },
+          BufferOffset = { bg = "#1E1F22", fg = "iris" },
           BufferTabpageFill = { bg = "#1E1F22" },
           CursorLine = { bg = "overlay" },
           BufferCurrent = { fg = "text", bg = "overlay" },
@@ -1017,7 +1085,7 @@ require("lazy").setup({
       -- - saiw) - [S]urround [A]dd [I]nner [W]ord [)]Paren
       -- - sd'   - [S]urround [D]elete [']quotes
       -- - sr)'  - [S]urround [R]eplace [)] [']
-      require("mini.surround").setup()
+      -- require("mini.surround").setup()
 
       -- Customimized Session Management
       require('mini-sessions-config').setup()
@@ -1045,6 +1113,23 @@ require("lazy").setup({
       --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
       --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
     end,
+  },
+
+  {
+    "nvim-treesitter/nvim-treesitter-context",
+    dependencies = { "nvim-treesitter/nvim-treesitter" },
+    opts = {
+      mode = "cursor",       -- can be "topline" or "cursor"
+      max_lines = 3,         -- how many lines the context window can span
+      trim_scope = "outer",  -- "inner" or "outer"
+      min_window_height = 0, -- disable if window height is less than this
+      separator = nil,       -- put something like "-" to add a separator line
+      zindex = 20,           -- floating window Z-index
+    },
+    config = function(_, opts)
+      require("treesitter-context").setup(opts)
+    end,
+    event = { "BufReadPost", "BufNewFile" }, -- lazy-load on file open
   },
 
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
