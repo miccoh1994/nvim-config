@@ -1,19 +1,3 @@
-local palette = require('rose-pine.palette')
-
-local colors = {
-	bg       = palette.base,
-	fg       = palette.love,
-	yellow   = palette.gold,
-	cyan     = palette.foam,
-	darkblue = palette.overlay,
-	violet   = palette.rose,
-	magenta  = palette.iris,
-	blue     = palette.pine,
-	red      = '#ec5f67',
-	orange   = '#FF8800',
-	green    = '#98be65',
-}
-
 local conditions = {
 	buffer_not_empty = function()
 		return vim.fn.empty(vim.fn.expand('%:t')) ~= 1
@@ -34,7 +18,7 @@ local config = {
 		-- Disable sections and component separators
 		component_separators = '',
 		section_separators = '',
-		theme = 'rose-pine',
+		theme = 'everforest',
 		disabled_filetypes = {
 			'NvimTree',
 		},
@@ -65,7 +49,7 @@ ins_left {
 	function()
 		return '▊'
 	end,
-	color = { fg = colors.blue }, -- Sets highlighting of component
+	-- color = { fg = colors.blue },     -- Sets highlighting of component
 	padding = { left = 0, right = 1 }, -- We don't need space before this
 }
 
@@ -74,32 +58,32 @@ ins_left {
 	function()
 		return ''
 	end,
-	color = function()
-		-- auto change color according to neovims mode
-		local mode_color = {
-			n = colors.cyan,
-			i = colors.fg,
-			v = colors.blue,
-			[''] = colors.blue,
-			V = colors.blue,
-			c = colors.magenta,
-			no = colors.red,
-			s = colors.orange,
-			S = colors.orange,
-			[''] = colors.orange,
-			ic = colors.yellow,
-			R = colors.violet,
-			Rv = colors.violet,
-			cv = colors.red,
-			ce = colors.red,
-			r = colors.cyan,
-			rm = colors.cyan,
-			['r?'] = colors.cyan,
-			['!'] = colors.red,
-			t = colors.red,
-		}
-		return { fg = mode_color[vim.fn.mode()] }
-	end,
+	-- color = function()
+	-- 	-- auto change color according to neovims mode
+	-- 	local mode_color = {
+	-- 		n = colors.cyan,
+	-- 		i = colors.fg,
+	-- 		v = colors.blue,
+	-- 		[''] = colors.blue,
+	-- 		V = colors.blue,
+	-- 		c = colors.magenta,
+	-- 		no = colors.red,
+	-- 		s = colors.orange,
+	-- 		S = colors.orange,
+	-- 		[''] = colors.orange,
+	-- 		ic = colors.yellow,
+	-- 		R = colors.violet,
+	-- 		Rv = colors.violet,
+	-- 		cv = colors.red,
+	-- 		ce = colors.red,
+	-- 		r = colors.cyan,
+	-- 		rm = colors.cyan,
+	-- 		['r?'] = colors.cyan,
+	-- 		['!'] = colors.red,
+	-- 		t = colors.red,
+	-- 	}
+	-- 	return { fg = mode_color[vim.fn.mode()] }
+	-- end,
 	padding = { right = 1 },
 }
 --
@@ -112,22 +96,24 @@ ins_left {
 ins_left {
 	'filename',
 	cond = conditions.buffer_not_empty,
-	color = { fg = colors.magenta },
+	-- color = { fg = colors.magenta },
 }
 
 ins_left { 'location' }
 
-ins_left { 'progress', color = { fg = colors.cyan } }
+ins_left { 'progress',
+	-- color = { fg = colors.cyan }
+}
 
 ins_left {
 	'diagnostics',
 	sources = { 'nvim_diagnostic' },
 	symbols = { error = ' ', warn = ' ', info = ' ' },
-	diagnostics_color = {
-		color_error = { fg = colors.red },
-		color_warn = { fg = colors.yellow },
-		color_info = { fg = colors.cyan },
-	},
+	-- diagnostics_color = {
+	-- 	color_error = { fg = colors.red },
+	-- 	color_warn = { fg = colors.yellow },
+	-- 	color_info = { fg = colors.cyan },
+	-- },
 }
 
 -- Insert mid section. You can make any number of sections in neovim :)
@@ -159,15 +145,15 @@ ins_right {
 		return msg
 	end,
 	icon = '',
-	color = { fg = colors.blue, },
+	-- color = { fg = colors.blue, },
 }
 
 -- Add components to right sections
 ins_right {
-	'o:encoding', -- option component same as &encoding in viml
+	'o:encoding',      -- option component same as &encoding in viml
 	fmt = string.upper, -- I'm not sure why it's upper case either ;)
 	cond = conditions.hide_in_width,
-	color = { fg = colors.green },
+	-- color = { fg = colors.green },
 }
 
 -- ins_right {
@@ -180,7 +166,7 @@ ins_right {
 ins_right {
 	'branch',
 	icon = '',
-	color = { fg = colors.violet },
+	-- color = { fg = colors.violet },
 }
 
 ins_right {
@@ -188,9 +174,9 @@ ins_right {
 	-- Is it me or the symbol for modified us really weird
 	symbols = { added = ' ', modified = '󰝤 ', removed = ' ' },
 	diff_color = {
-		added = { fg = colors.green },
-		modified = { fg = colors.orange },
-		removed = { fg = colors.red },
+		-- added = { fg = colors.green },
+		-- modified = { fg = colors.orange },
+		-- removed = { fg = colors.red },
 	},
 	cond = conditions.hide_in_width,
 }
