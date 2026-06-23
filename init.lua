@@ -219,6 +219,23 @@ end)
 later(function()
   require('mini.files').setup({ windows = { preview = true, width_preview = 50 } })
   require('mini.pick').setup({ window = { prompt_prefix = '  ' } })
+
+  -- Make terminal paste (e.g. Cmd+V) insert into the picker prompt.
+  -- mini.pick's setup() replaces vim.paste with a no-op hint while a picker is
+  -- active; re-wrap it here so a bracketed paste appends to the query instead.
+  local paste_when_no_picker = vim.paste
+  vim.paste = function(lines, phase)
+    if not MiniPick.is_picker_active() then
+      return paste_when_no_picker(lines, phase)
+    end
+    local query = MiniPick.get_picker_query()
+    for _, ch in ipairs(vim.fn.split(table.concat(lines, ' '), '\\zs')) do
+      table.insert(query, ch)
+    end
+    MiniPick.set_picker_query(query)
+    return true
+  end
+
   require('mini.extra').setup()
   require('mini.visits').setup()
   require('mini.bufremove').setup()
@@ -338,7 +355,8 @@ later(function()
   require('mini.surround').setup()  -- sa / sd / sr
   require('mini.ai').setup({ n_lines = 500 })  -- better a/i text objects
   require('mini.move').setup()      -- <M-hjkl> move lines / selections
-  require('mini.operators').setup() -- gr (replace), gs (sort), gm (duplicate), g= (eval)
+  -- gr is reserved for LSP references (see LspAttach); move replace to gR
+  require('mini.operators').setup({ replace = { prefix = 'gR' } }) -- gR (replace), gs (sort), gm (duplicate), g= (eval)
   require('mini.trailspace').setup()
 
   require('mini.indentscope').setup({
@@ -406,15 +424,54 @@ later(function()
     float            = { border = 'rounded', source = 'always' },
   })
 
+  -- Peek a symbol's definition in a floating window instead of jumping/splitting
+  local function peek_definition()
+    local client = vim.lsp.get_clients({ bufnr = 0, method = 'textDocument/definition' })[1]
+    if not client then return end
+    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+    client:request('textDocument/definition', params, function(err, result)
+      if err or not result or vim.tbl_isempty(result) then
+        return vim.notify('No definition found', vim.log.levels.INFO)
+      end
+      local location = result[1] or result
+      vim.lsp.util.preview_location(location, { border = 'rounded', focusable = true })
+    end)
+  end
+
+  -- Goto definition: jump straight there if there's one result, else show a picker
+  local function goto_definition()
+    local client = vim.lsp.get_clients({ bufnr = 0, method = 'textDocument/definition' })[1]
+    if not client then return end
+    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+    client:request('textDocument/definition', params, function(err, result)
+      if err or not result or vim.tbl_isempty(result) then
+        return vim.notify('No definition found', vim.log.levels.INFO)
+      end
+      local locations = vim.islist(result) and result or { result }
+      if #locations == 1 then
+        vim.lsp.util.show_document(locations[1], client.offset_encoding, { focus = true })
+      else
+        MiniExtra.pickers.lsp({ scope = 'definition' })
+      end
+    end)
+  end
+
+  -- Neovim ships global gr* LSP defaults (grr/gra/grn/gri/grt/grx). They make
+  -- our immediate `gr` (references) a prefix, so Neovim waits and mini.clue
+  -- shows a menu. Remove them — this config binds the equivalents elsewhere.
+  for _, lhs in ipairs({ 'grn', 'gra', 'grr', 'gri', 'grt', 'grx' }) do
+    pcall(vim.keymap.del, 'n', lhs)
+  end
+
   vim.api.nvim_create_autocmd('LspAttach', {
     callback = function(ev)
       local map = function(keys, fn, desc)
         vim.keymap.set('n', keys, fn, { buffer = ev.buf, desc = desc })
       end
       -- Navigation
-      map('gd', vim.lsp.buf.definition,      'Definition')
-      map('gD', vim.lsp.buf.declaration,     'Declaration')
-      map('gR', vim.lsp.buf.references,      'References')  -- uppercase: gr is mini.operators replace
+      map('gd', goto_definition,             'Goto definition')
+      map('gD', peek_definition,             'Peek definition')
+      map('gr', function() MiniExtra.pickers.lsp({ scope = 'references' }) end, 'References')  -- replace operator moved to gR
       map('gi', vim.lsp.buf.implementation,  'Implementation')
       map('gy', vim.lsp.buf.type_definition, 'Type definition')
       map('K',  vim.lsp.buf.hover,           'Hover docs')
