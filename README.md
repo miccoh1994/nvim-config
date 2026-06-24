@@ -36,11 +36,26 @@ Leader key is `Space`.
 | `<leader>dj / dk` | Next / prev diagnostic |
 | `<leader>g{o,s,S,b,c}` | Git: overlay, show, hunks, branches, commits |
 | `<leader>l{f,s,S}` | LSP: format, document symbols, workspace symbols |
-| `gd / gD / gR / gi / gy` | LSP navigation |
+| `gd / gD / gr / gi / gy` | LSP: goto def (picker if many), peek def, references, implementation, type def |
 | `K` | Hover docs |
 | `<leader>rn` | Rename |
 | `<leader>ca` | Code action |
 | `jj` | Escape insert mode |
+
+## File explorer
+
+`<leader>e` opens the [mini.files](https://github.com/nvim-mini/mini.nvim/blob/main/readmes/mini-files.md) explorer at the current file (`<leader>E` opens it at the cwd). Navigation is locked to the project root (git root, else cwd) — `h` won't climb above it.
+
+The explorer is an editable buffer; you make changes by editing it and then pressing `=` to apply them to disk:
+
+| Action | How |
+|--------|-----|
+| Navigate | `l` / `L` go in, `h` / `H` go out |
+| **Create** | Type a new line with the name (end with `/` for a directory) |
+| **Rename / move** | Edit the entry's text |
+| **Delete** | Delete the line (`dd`) |
+| **Apply changes** | `=` |
+| Full help | `g?` |
 
 ## LSP
 

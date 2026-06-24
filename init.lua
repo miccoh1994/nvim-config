@@ -218,6 +218,53 @@ end)
 -- ─────────────────────────────────────────────────────────────────────────────
 later(function()
   require('mini.files').setup({ windows = { preview = true, width_preview = 50 } })
+
+  -- ── Explorer: lock navigation to the project root ──────────────────────────
+  -- Track the root (git root, else cwd) set when the explorer opens, and make
+  -- `h` / `H` refuse to climb above it.
+  local mf_root
+  local function mf_set_root(path)
+    local start = (path and path ~= '') and path or vim.uv.cwd()
+    mf_root = vim.fs.normalize(vim.fs.root(start, '.git') or vim.uv.cwd())
+  end
+  local function mf_at_root()
+    local st = MiniFiles.get_explorer_state()
+    local w  = st and st.windows[st.depth_focus]
+    return w ~= nil and mf_root ~= nil and vim.fs.normalize(w.path) == mf_root
+  end
+  local function mf_go_out()
+    if mf_at_root() then return end
+    MiniFiles.go_out()
+  end
+  local function mf_go_out_plus()
+    if mf_at_root() then return end
+    MiniFiles.go_out()
+    MiniFiles.trim_right()
+  end
+
+  -- Override go-out in each explorer buffer + advertise the CRUD workflow in a
+  -- footer (create/rename/delete are done by editing the buffer, then `=`).
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'MiniFilesBufferCreate',
+    callback = function(args)
+      local opts = { buffer = args.data.buf_id, nowait = true }
+      vim.keymap.set('n', 'h', mf_go_out,      vim.tbl_extend('force', opts, { desc = 'Go out (≤ root)' }))
+      vim.keymap.set('n', 'H', mf_go_out_plus, vim.tbl_extend('force', opts, { desc = 'Go out + (≤ root)' }))
+    end,
+  })
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'MiniFilesWindowUpdate',
+    callback = function(args)
+      local win = args.data.win_id
+      local cfg = vim.api.nvim_win_get_config(win)
+      local st  = MiniFiles.get_explorer_state()
+      local focused = st and st.windows[st.depth_focus] and st.windows[st.depth_focus].win_id
+      cfg.footer = win == focused and { { ' new line=add · edit=rename · dd=delete · = apply · g? ', 'MiniFilesTitle' } } or ''
+      cfg.footer_pos = win == focused and 'left' or nil
+      vim.api.nvim_win_set_config(win, cfg)
+    end,
+  })
+
   require('mini.pick').setup({ window = { prompt_prefix = '  ' } })
 
   -- Make terminal paste (e.g. Cmd+V) insert into the picker prompt.
@@ -244,10 +291,12 @@ later(function()
   -- Explorer (toggle: close if open, open at current file if closed)
   map('n', '<leader>e', function()
     if not MiniFiles.close() then
-      MiniFiles.open(vim.api.nvim_buf_get_name(0))
+      local path = vim.api.nvim_buf_get_name(0)
+      mf_set_root(path)
+      MiniFiles.open(path)
     end
   end, { desc = 'Toggle explorer' })
-  map('n', '<leader>E', function() MiniFiles.open() end, { desc = 'Explorer (cwd)' })
+  map('n', '<leader>E', function() mf_set_root(vim.uv.cwd()); MiniFiles.open(vim.uv.cwd()) end, { desc = 'Explorer (cwd)' })
   -- Search
   map('n', '<leader>sf', function() MiniPick.builtin.files({ tool = 'rg' }) end,          { desc = 'Search files (rg)' })
   map('n', '<leader>sg', function() MiniPick.builtin.grep_live({ tool = 'rg' }) end,    { desc = 'Search grep (rg)' })
