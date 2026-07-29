@@ -201,6 +201,7 @@ later(function()
       { mode = 'n', keys = '<Leader>f', desc = '+find' },
       { mode = 'n', keys = '<Leader>g', desc = '+git' },
       { mode = 'n', keys = '<Leader>L', desc = '+lsp' },
+      { mode = 'n', keys = '<Leader>m', desc = '+markdown' },
       { mode = 'n', keys = '<Leader>s', desc = '+search' },
       { mode = 'n', keys = '<Leader>S', desc = '+sessions' },
       clue.gen_clues.builtin_completion(),
@@ -540,4 +541,243 @@ later(function()
   })
 
 
+end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Markdown
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Languages highlighted inside fenced code blocks, using Neovim's bundled
+-- syntax files (see the highlighter note in markdown_buf_setup below). Must be
+-- set before a markdown buffer loads its syntax, hence `now()`. Entries are
+-- either a filetype or `alias=filetype`.
+--
+-- Each entry sources a syntax file the first time a markdown buffer highlights,
+-- so this list is a latency/coverage trade: ~35ms for markdown alone, ~70ms with
+-- the list below. The costly ones left out are java (+30ms), html (+20ms),
+-- vim/rust (+15ms each) and css (+14ms).
+now(function()
+  vim.g.markdown_fenced_languages = {
+    'bash=sh', 'sh', 'zsh', 'c', 'cpp', 'diff', 'dockerfile', 'go',
+    'javascript', 'js=javascript', 'json', 'jsonc', 'lua', 'make',
+    'python', 'py=python', 'sql', 'toml', 'typescript', 'ts=typescript',
+    'yaml', 'yml=yaml',
+  }
+end)
+
+later(function()
+  -- ── Gruvbox-tuned colours for the RenderMarkdown* groups ───────────────────
+  -- The plugin defines these with `default = true`, so explicit sets win.
+  -- `:colorscheme` clears them, so re-apply on ColorScheme; the autocmd is
+  -- registered *before* the plugin loads so it runs first and the plugin can
+  -- rebuild its derived (blended) groups from these values.
+  local function markdown_colors()
+    local set = function(name, opts) vim.api.nvim_set_hl(0, name, opts) end
+
+    -- heading level → { accent fg, accent blended ~18% into gruvbox bg0 }
+    local levels = {
+      { '#fb4934', '#4e2e2a' },  -- red
+      { '#fe8019', '#4e3825' },  -- orange
+      { '#fabd2f', '#4e4329' },  -- yellow
+      { '#b8bb26', '#424328' },  -- green
+      { '#8ec07c', '#3a4337' },  -- aqua
+      { '#d3869b', '#47393d' },  -- purple
+    }
+    for i, c in ipairs(levels) do
+      set('RenderMarkdownH' .. i,         { fg = c[1], bold = true })
+      set('RenderMarkdownH' .. i .. 'Bg', { fg = c[1], bg = c[2], bold = true })
+    end
+
+    -- Code blocks sit on bg0_s so they read as cards against Normal (#282828)
+    set('RenderMarkdownCode',         { bg = '#32302f' })
+    set('RenderMarkdownCodeBorder',   { bg = '#32302f' })
+    set('RenderMarkdownCodeInfo',     { fg = '#928374', bg = '#32302f', italic = true })
+    set('RenderMarkdownCodeFallback', { fg = '#a89984', bg = '#32302f' })
+    set('RenderMarkdownCodeInline',   { fg = '#fe8019', bg = '#3c3836' })
+
+    set('RenderMarkdownBullet',    { fg = '#fe8019' })
+    set('RenderMarkdownDash',      { fg = '#504945' })
+    set('RenderMarkdownTableHead', { fg = '#d3869b', bold = true })
+    set('RenderMarkdownTableRow',  { fg = '#83a598' })
+    set('RenderMarkdownLink',      { fg = '#8ec07c' })
+    set('RenderMarkdownLinkTitle', { fg = '#83a598', underline = true })
+    set('RenderMarkdownWikiLink',  { fg = '#8ec07c' })
+    set('RenderMarkdownUnchecked', { fg = '#928374' })
+    set('RenderMarkdownChecked',   { fg = '#b8bb26' })
+    set('RenderMarkdownTodo',      { fg = '#fabd2f' })
+    set('RenderMarkdownIndent',    { fg = '#3c3836' })
+    set('RenderMarkdownHtmlComment', { fg = '#665c54', italic = true })
+    -- ==highlighted== text, marker-pen style
+    set('RenderMarkdownInlineHighlight', { fg = '#282828', bg = '#fabd2f' })
+
+    -- Block quote bars cycle by nesting level
+    local quotes = { '#8ec07c', '#83a598', '#d3869b', '#b8bb26', '#fabd2f', '#fe8019' }
+    for i, fg in ipairs(quotes) do
+      set('RenderMarkdownQuote' .. i, { fg = fg })
+    end
+
+    -- Callout labels
+    set('RenderMarkdownInfo',    { fg = '#83a598', bold = true })
+    set('RenderMarkdownSuccess', { fg = '#b8bb26', bold = true })
+    set('RenderMarkdownHint',    { fg = '#8ec07c', bold = true })
+    set('RenderMarkdownWarn',    { fg = '#fabd2f', bold = true })
+    set('RenderMarkdownError',   { fg = '#fb4934', bold = true })
+  end
+
+  markdown_colors()
+  vim.api.nvim_create_autocmd('ColorScheme', {
+    group    = vim.api.nvim_create_augroup('MarkdownColors', {}),
+    callback = markdown_colors,
+    desc     = 'Re-apply markdown render highlights',
+  })
+
+  add({ source = 'MeanderingProgrammer/render-markdown.nvim' })
+
+  require('render-markdown').setup({
+    file_types = { 'markdown', 'markdown.mdx' },
+    -- Sign column already carries diff + diagnostics; keep it uncluttered
+    sign  = { enabled = false },
+    -- No utftex / latex2text on this machine
+    latex = { enabled = false },
+    -- These need the html / yaml tree-sitter parsers, which Neovim doesn't
+    -- bundle; the regex syntax already colours yaml frontmatter
+    html  = { enabled = false },
+    yaml  = { enabled = false },
+
+    heading = {
+      position = 'inline',  -- conceal the '#'s, put the icon where they were
+      width    = 'block',   -- tinted bar hugs the heading text
+      right_pad = 3,
+      icons    = { '󰲡 ', '󰲣 ', '󰲥 ', '󰲧 ', '󰲩 ', '󰲫 ' },
+    },
+
+    code = {
+      style        = 'full',
+      width        = 'block',
+      min_width    = 40,
+      left_pad     = 2,
+      right_pad    = 2,
+      border       = 'thick',  -- fence lines become solid bars in the code colour
+      language_pad = 1,
+      inline_pad   = 1,        -- breathing room around `inline code`
+    },
+
+    bullet = {
+      icons     = { '●', '○', '◆', '◇' },
+      right_pad = 1,
+    },
+
+    checkbox = {
+      -- stylua: ignore
+      custom = {
+        todo      = { raw = '[-]', rendered = '󰥔 ', highlight = 'RenderMarkdownTodo' },
+        important = { raw = '[!]', rendered = '󰀪 ', highlight = 'RenderMarkdownWarn' },
+        cancelled = { raw = '[~]', rendered = '󰅖 ', highlight = 'RenderMarkdownError' },
+        question  = { raw = '[?]', rendered = '󰘥 ', highlight = 'RenderMarkdownInfo' },
+      },
+    },
+
+    quote = {
+      icon             = '▋',
+      repeat_linebreak = true,  -- needs the showbreak/breakindent set below
+    },
+
+    pipe_table = {
+      preset              = 'round',
+      alignment_indicator = '━',
+    },
+
+    -- Completion for callout names ([!NOTE], …) and checkbox states through the
+    -- plugin's in-process LSP, which mini.completion already talks to
+    completions = { lsp = { enabled = true } },
+  })
+
+  -- ── Prose-friendly buffer setup ────────────────────────────────────────────
+  -- Called with the buffer current (and its window current, for the display
+  -- options below).
+  local function markdown_buf_setup(buf)
+    -- Neovim 0.12's markdown ftplugin starts the treesitter highlighter, but the
+    -- only bundled parsers are markdown/lua/vim/c/query/vimdoc — every other
+    -- fenced language then renders as one flat colour, because the markdown
+    -- query paints the whole block with @markup.raw.block (priority 90) and that
+    -- sits above the syntax layer. The bundled regex syntax files cover ~30
+    -- languages, so prefer those. render-markdown parses the tree itself and is
+    -- unaffected; only `:checkhealth render-markdown` notices (it wants the
+    -- treesitter highlighter enabled). Swap this out if nvim-treesitter and its
+    -- parsers ever get added.
+    if vim.b[buf].ts_highlight then
+      vim.treesitter.stop(buf)
+      vim.bo[buf].syntax = vim.bo[buf].filetype  -- FileType skipped this while ts was on
+    end
+
+    local o = vim.opt_local
+    o.wrap           = true   -- global default is nowrap
+    o.linebreak      = true   -- break at word boundaries
+    o.breakindent    = true
+    o.breakindentopt = ''     -- required by quote.repeat_linebreak
+    o.showbreak      = '  '   -- ditto
+    o.list           = false
+
+    -- Indent guides add noise to a rendered document
+    vim.b[buf].miniindentscope_disable = true
+
+    -- Move by screen line over wrapped prose, but keep counts literal (3j)
+    for _, mode in ipairs({ 'n', 'x' }) do
+      vim.keymap.set(mode, 'j', "v:count == 0 ? 'gj' : 'j'", { buffer = buf, expr = true, desc = 'Down (screen line)' })
+      vim.keymap.set(mode, 'k', "v:count == 0 ? 'gk' : 'k'", { buffer = buf, expr = true, desc = 'Up (screen line)' })
+    end
+
+    -- Cycle the checkbox on the current line: none → [ ] → [x] → [ ]
+    vim.keymap.set('n', '<leader>mx', function()
+      local line = vim.api.nvim_get_current_line()
+      local new
+      if line:match('^%s*[-*+]%s+%[ %]') then
+        new = line:gsub('%[ %]', '[x]', 1)
+      elseif line:match('^%s*[-*+]%s+%[[^%]]%]') then
+        new = line:gsub('%[[^%]]%]', '[ ]', 1)
+      elseif line:match('^%s*[-*+]%s+') then
+        new = line:gsub('^(%s*[-*+]%s+)', '%1[ ] ', 1)
+      else
+        new = line:gsub('^(%s*)', '%1- [ ] ', 1)
+      end
+      vim.api.nvim_set_current_line(new)
+    end, { buffer = buf, desc = 'Toggle checkbox' })
+
+    -- Jump to a heading (ATX only, skipping fenced code blocks)
+    vim.keymap.set('n', '<leader>mh', function()
+      local items, in_fence = {}, false
+      for lnum, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
+        if line:match('^%s*```') or line:match('^%s*~~~') then
+          in_fence = not in_fence
+        elseif not in_fence then
+          local hashes, title = line:match('^(#+)%s+(.+)$')
+          if hashes then
+            table.insert(items, {
+              text  = ('%s%s'):format(('  '):rep(#hashes - 1), title),
+              bufnr = buf,
+              lnum  = lnum,
+            })
+          end
+        end
+      end
+      if #items == 0 then return vim.notify('No headings found', vim.log.levels.INFO) end
+      MiniPick.start({ source = { items = items, name = 'Headings' } })
+    end, { buffer = buf, desc = 'Pick heading' })
+  end
+
+  vim.api.nvim_create_autocmd('FileType', {
+    pattern  = { 'markdown', 'markdown.mdx' },
+    desc     = 'Markdown buffer options and maps',
+    callback = function(ev) markdown_buf_setup(ev.buf) end,
+  })
+
+  -- This runs from `later()`, so a markdown file passed on the command line (or
+  -- restored from a session) already fired FileType. Catch those up.
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.bo[buf].filetype:match('^markdown') then
+      vim.api.nvim_win_call(win, function() markdown_buf_setup(buf) end)
+    end
+  end
+
+  vim.keymap.set('n', '<leader>mt', '<Cmd>RenderMarkdown toggle<CR>', { desc = 'Toggle markdown render' })
 end)
