@@ -35,7 +35,7 @@ Leader key is `Space`.
 | `<leader>p{char}` | Jump to buffer by char |
 | `<leader>b{d,D,ci}` | Delete / force-delete / close inactive buffers |
 | `<leader>dj / dk` | Next / prev diagnostic |
-| `<leader>g{o,s,S,b,c}` | Git: overlay, show, hunks, branches, commits |
+| `<leader>g{o,s,l,S,b,c}` | Git: overlay, show at cursor, inline blame, hunks, branches, commits |
 | `<leader>l{f,s,S}` | LSP: format, document symbols, workspace symbols |
 | `gd / gD / gr / gi / gy` | LSP: goto def (picker if many), peek def, references, implementation, type def |
 | `K` | Hover docs |
@@ -58,6 +58,18 @@ The explorer is an editable buffer; you make changes by editing it and then pres
 | **Delete** | Delete the line (`dd`) |
 | **Apply changes** | `=` |
 | Full help | `g?` |
+
+## Git
+
+Diff signs, `<leader>go` for the diff overlay and `<leader>gs` to show the commit under the cursor all come from [mini.diff](https://github.com/nvim-mini/mini.nvim/blob/main/readmes/mini-diff.md) and [mini.git](https://github.com/nvim-mini/mini.nvim/blob/main/readmes/mini-git.md).
+
+`<leader>gl` toggles inline blame for the line under the cursor:
+
+```
+  return ('hello, %s'):format(name)      Michael Cohen · 3 days ago · fix picker paste
+```
+
+It stays off until you ask for it, then follows the cursor (debounced 150 ms, results cached per line) and hides itself in insert mode. Unsaved lines are piped through `git blame --contents -`, so blame stays correct in a modified buffer and new lines read `Uncommitted change`. Untracked files and files outside a repo show nothing.
 
 ## Markdown
 

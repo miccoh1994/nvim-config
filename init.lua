@@ -434,9 +434,135 @@ later(function()
   require('mini.diff').setup()  -- diff signs in sign column
   require('mini.git').setup()   -- git integration + blame
 
+  -- ── Inline blame for the current line (toggle) ─────────────────────────────
+  -- Virtual text at end of line: "Michael Cohen · 3 days ago · summary".
+  local blame_ns     = vim.api.nvim_create_namespace('inline_blame')
+  local blame_group  = vim.api.nvim_create_augroup('InlineBlame', {})
+  local blame_timer  = vim.uv.new_timer()
+  local blame_on     = false
+  local blame_cache  = {}  -- 'buf:changedtick:lnum' → rendered text
+  local blame_cached = 0
+
+  local function blame_clear(buf)
+    pcall(vim.api.nvim_buf_clear_namespace, buf or 0, blame_ns, 0, -1)
+  end
+
+  local function blame_set(buf, lnum, text)
+    if not vim.api.nvim_buf_is_valid(buf) then return end
+    pcall(vim.api.nvim_buf_set_extmark, buf, blame_ns, lnum - 1, 0, {
+      virt_text     = { { '   ' .. text, 'Comment' } },
+      virt_text_pos = 'eol',
+      hl_mode       = 'combine',
+    })
+  end
+
+  local function blame_ago(ts)
+    local diff = os.time() - ts
+    local units = {
+      { 31557600, 'year' }, { 2629800, 'month' }, { 604800, 'week' },
+      { 86400, 'day' }, { 3600, 'hour' }, { 60, 'minute' },
+    }
+    for _, u in ipairs(units) do
+      if diff >= u[1] then
+        local n = math.floor(diff / u[1])
+        return ('%d %s%s ago'):format(n, u[2], n > 1 and 's' or '')
+      end
+    end
+    return 'just now'
+  end
+
+  local function blame_update()
+    if not blame_on then return end
+    local buf = vim.api.nvim_get_current_buf()
+    blame_clear(buf)
+
+    local path = vim.api.nvim_buf_get_name(buf)
+    if vim.bo[buf].buftype ~= '' or path == '' or vim.fn.filereadable(path) == 0 then return end
+    local summary = vim.b[buf].minigit_summary
+    local root = (summary and summary.root) or vim.fs.root(path, '.git')
+    if not root then return end
+
+    local lnum = vim.api.nvim_win_get_cursor(0)[1]
+    local key  = ('%d:%d:%d'):format(buf, vim.api.nvim_buf_get_changedtick(buf), lnum)
+    if blame_cache[key] then return blame_set(buf, lnum, blame_cache[key]) end
+
+    local cmd = { 'git', '-C', root, '--no-pager', 'blame', '--porcelain',
+                  '-L', ('%d,%d'):format(lnum, lnum) }
+    -- Feed unsaved changes through stdin so line numbers still line up
+    local stdin
+    if vim.bo[buf].modified then
+      vim.list_extend(cmd, { '--contents', '-' })
+      stdin = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), '\n') .. '\n'
+    end
+    vim.list_extend(cmd, { '--', path })
+
+    vim.system(cmd, { text = true, stdin = stdin }, vim.schedule_wrap(function(res)
+      if not blame_on or res.code ~= 0 then return end
+      local lines  = vim.split(res.stdout, '\n')
+      local sha    = (lines[1] or ''):match('^(%x+)')
+      local author, ts, subject
+      for _, line in ipairs(lines) do
+        author  = author  or line:match('^author (.+)$')
+        ts      = ts      or line:match('^author%-time (%d+)$')
+        subject = subject or line:match('^summary (.+)$')
+      end
+
+      local text
+      if not sha or sha:match('^0+$') or author == 'Not Committed Yet' then
+        text = 'Uncommitted change'
+      elseif author and ts and subject then
+        text = ('%s · %s · %s'):format(author, blame_ago(tonumber(ts)), subject)
+      else
+        return
+      end
+
+      if blame_cached > 500 then blame_cache, blame_cached = {}, 0 end
+      blame_cache[key] = text
+      blame_cached = blame_cached + 1
+
+      -- The cursor may have moved on while git was running
+      if vim.api.nvim_get_current_buf() == buf and vim.api.nvim_win_get_cursor(0)[1] == lnum then
+        blame_set(buf, lnum, text)
+      end
+    end))
+  end
+
+  local function blame_toggle()
+    blame_on = not blame_on
+    vim.api.nvim_clear_autocmds({ group = blame_group })
+    blame_timer:stop()
+
+    if not blame_on then
+      for _, buf in ipairs(vim.api.nvim_list_bufs()) do blame_clear(buf) end
+      return vim.notify('Inline blame off')
+    end
+
+    vim.api.nvim_create_autocmd({ 'CursorMoved', 'BufEnter', 'InsertLeave' }, {
+      group    = blame_group,
+      desc     = 'Blame the line under the cursor',
+      callback = function()
+        blame_clear(0)
+        blame_timer:stop()
+        blame_timer:start(150, 0, vim.schedule_wrap(blame_update))
+      end,
+    })
+    vim.api.nvim_create_autocmd({ 'InsertEnter', 'BufLeave' }, {
+      group    = blame_group,
+      desc     = 'Hide inline blame',
+      callback = function()
+        blame_timer:stop()
+        blame_clear(0)
+      end,
+    })
+
+    blame_update()
+    vim.notify('Inline blame on')
+  end
+
   local map = vim.keymap.set
   map('n', '<leader>go', MiniDiff.toggle_overlay,  { desc = 'Diff overlay' })
   map('n', '<leader>gs', MiniGit.show_at_cursor,   { desc = 'Show at cursor' })
+  map('n', '<leader>gl', blame_toggle,             { desc = 'Toggle inline blame' })
   map('n', '<leader>gS', function() MiniExtra.pickers.git_hunks() end,   { desc = 'Git hunks' })
   map('n', '<leader>gb', function() MiniExtra.pickers.git_branches() end, { desc = 'Git branches' })
   map('n', '<leader>gc', function() MiniExtra.pickers.git_commits() end,  { desc = 'Git commits' })
